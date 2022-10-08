@@ -1,8 +1,1 @@
-
-
-
-function h(){
-  console.log('h')
-}
-
-h()
+print('jhello')

@@ -9,11 +9,6 @@ use std::fs::File;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
 fn test_print(text: String) -> String {
     println!("{}", text);
     return text;
@@ -49,7 +44,7 @@ fn py_check() -> String {
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet, test_print, run_js, run_py, js_check, py_check])
+        .invoke_handler(tauri::generate_handler![test_print, run_js, run_py, js_check, py_check])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

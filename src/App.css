@@ -1,3 +1,7 @@
 .editorContainer {
 	display: flex;
 }
+
+.cm-focused {
+	outline: none !important;
+}

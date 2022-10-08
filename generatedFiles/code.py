@@ -1,7 +1,1 @@
-
-
-
-def printH():
-  print('hello')
-
-printH()
+print('jhello')
