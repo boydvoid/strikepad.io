@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useContext } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Platform, platform } from '@tauri-apps/api/os'
@@ -10,18 +10,23 @@ import CodeMirror from '@uiw/react-codemirror'
 
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
+import { sql } from '@codemirror/lang-sql'
 
 import "./App.css";
 
-const languages = ['js', 'javascript', 'python', 'setup']
-const metaKeywords = ['[lang]']
+const languages = ['javascript', 'python', 'setup', 'postgres']
+const metaKeywords = ['[lang]', '[dbuser]', '[dbpass]']
 
 function App() {
 	const [editorValue, setEditorValue] = useState("")
+	const [hiddenInput, setHiddenInput] = useState("")
+	const [showHiddenInput, setShowHiddenInput] = useState(false)
 	const [runResponse, setRunResponse] = useState("")
 	const [language, setLanguage] = useState('setup')
 	const [isInstalled, setIsInstalled] = useState<string | null>(null)
 	const [os, setOs] = useState<Platform | null>(null)
+	const [sqlPass, setSqlPass] = useState<string | null>(null)
+	const [sqlUser, setSqlUser] = useState<string | null>(null)
 	const editorValueRef = useRef(editorValue)
 
 	useEffect(() => {
@@ -33,35 +38,57 @@ function App() {
 		getOs()
 	}, [])
 
-	useEffect(() => {
-		document.addEventListener('keydown', (e: any) => {
-			if (os === 'darwin' && e.metaKey && e.key === 'Enter') {
-				handleButton()
-			}
-		})
-		return () => {
-			document.removeEventListener('keydown', () => { })
+	const toggleHiddenInput = useCallback(() => {
+		setShowHiddenInput(!showHiddenInput)
+	}, [showHiddenInput])
+
+	const handleKeyListen = useCallback((e: any) => {
+		if (os === 'darwin' && e.metaKey && e.key === 'Enter') {
+			handleButton()
 		}
-	}, [language])
+		if (os === 'darwin' && e.metaKey && e.key === 'k') {
+			toggleHiddenInput()
+		}
+	}, [showHiddenInput, os, sqlUser, sqlPass])
+
+	useEffect(() => {
+		document.addEventListener('keydown', handleKeyListen)
+		return () => {
+			document.removeEventListener('keydown', handleKeyListen)
+		}
+	}, [handleKeyListen])
 
 	async function handleButton() {
-
-		let res: string
-		switch (language) {
-			case 'js':
-			case 'javascript':
-				res = await invoke('run_js', { code: editorValueRef.current })
-				setRunResponse(res)
-				break;
-			case 'python':
-				res = await invoke('run_py', { code: editorValueRef.current })
-				setRunResponse(res)
-				break;
-			case 'setup':
-				setRunResponse("You must select a language.")
-				break;
+		if (language === 'setup') {
+			setRunResponse("You must select a language.")
+		} else {
+			invokeLanguage()
 		}
+	}
 
+	async function invokeLanguage() {
+		const code = removeMeta()
+		console.log(code)
+		const res: string = await invoke(`run_${language}`, {
+			code: code,
+			...(sqlPass ? { pass: sqlPass } : undefined),
+			...(sqlUser ? { user: sqlUser } : undefined)
+		})
+		console.log(res)
+		setRunResponse(res)
+	}
+
+	function removeMeta() {
+		let lines = editorValueRef.current.split("\n")
+
+		let newLines = lines.map(line => {
+			if (metaKeywords.indexOf(line.split(" ")[0]) > -1) {
+				return '\n'
+			} else {
+				return '\n' + line
+			}
+		})
+		return newLines.join("")
 	}
 
 	useEffect(() => {
@@ -82,7 +109,29 @@ function App() {
 
 	useEffect(() => {
 		checkForLanguage()
+		checkForUser()
 	}, [editorValue])
+
+	const checkForUser = () => {
+
+		const valueByLine = splitByLine()
+
+		valueByLine.map((line: string, i: number) => {
+			if (line.includes('[dbuser]')) {
+				const l: string = line.split(']')[1].trim()
+				setSqlUser(l)
+				console.log(sqlUser)
+			}
+			if (line.includes('[dbpass]')) {
+				const l: string = line.split(']')[1].trim()
+				setSqlPass(l)
+				console.log(sqlPass)
+
+			}
+
+		}
+		)
+	}
 
 	const onChange = (value, viewUpdate) => {
 		setEditorValue(value)
@@ -114,25 +163,23 @@ function App() {
 	}, [language])
 
 	async function checkForInstallation() {
-		let res: string
-		switch (language) {
-			case 'js':
-			case 'javascript':
-				res = await invoke('js_check')
-				setIsInstalled(res)
-				break;
-			case 'python':
-				res = await invoke('py_check')
-				setIsInstalled(res)
-				break;
-		}
+		let res: string = await invoke(`${language}_check`)
+		setIsInstalled(res)
 	}
 
 
-	// TODO:remove split by line 
 	function splitByLine() {
 		return editorValueRef.current.split('\n')
 	}
+
+	const handleHiddenSubmit = useCallback((e: React.FormEvent) => {
+		e.preventDefault()
+		if (languages.indexOf(hiddenInput.trim()) > -1) {
+			setLanguage(hiddenInput)
+		}
+		setShowHiddenInput(false)
+		setHiddenInput('')
+	}, [hiddenInput])
 
 	return (
 		<div className="App">
@@ -148,7 +195,8 @@ function App() {
 						height="100%"
 						width="50vw"
 						maxWidth="50vw"
-						extensions={[javascript(), python()]}
+						extensions={[javascript(), python(), sql()]}
+						lang="javascript"
 						onChange={onChange}
 						theme="dark"
 					/>
@@ -156,6 +204,14 @@ function App() {
 				<div className="flex basis-1/2 grow whitespace-pre-line">
 					{runResponse}
 				</div>
+				{
+					showHiddenInput &&
+					<div className="absolute bottom-0 w-full p-4">
+						<form onSubmit={handleHiddenSubmit}>
+							<input autoFocus className="bg-blue-500 w-full h-8 rounded p-4" value={hiddenInput} onChange={(e) => setHiddenInput(e.target.value)} />
+						</form>
+					</div>
+				}
 			</div>
 		</div>
 	);
