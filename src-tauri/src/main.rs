@@ -50,7 +50,7 @@ fn run_python(code: &[u8]) -> String {
 }
 
 #[tauri::command]
-fn run_postgres(code: String, user: &str, pass: &str) -> CommandResult<String, CommandError>{
+async fn run_postgres(code: String, user: &str, pass: &str) -> CommandResult<String, CommandError>{
     let url: String = format!("postgres://postgres:{}@localhost:5432/{}", pass, user);
 
     let query: String = code;
@@ -65,17 +65,16 @@ fn run_postgres(code: String, user: &str, pass: &str) -> CommandResult<String, C
     let ret = format!("{}",String::from_utf8_lossy(&x.stdout).to_string());
 
     let mut new_ret = String::new();
-    // changes spaces to "\u{a0}"
+    // changes spaces to "_"
     for char in ret.chars() {
         if char == ' ' {
-            new_ret.push('\u{a0}');
+            new_ret.push('^');
         } else {
             new_ret.push(char);
         }
     }
 
     println!("{}",new_ret);
-    // maybe just run from the command line? 
     Ok(new_ret)
 }
 
@@ -92,7 +91,8 @@ fn python_check() -> String {
 }
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![test_print, run_javascript, run_python, run_postgres, javascript_check, python_check ])
         .run(tauri::generate_context!())

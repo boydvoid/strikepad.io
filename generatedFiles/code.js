@@ -1,6 +1,10 @@
 
-function hello(params) {
-  console.log('hello')
-}
+//[dbuser] strikepad
+//[dbpass] strike
 
-hello()
+//select * from users;
+
+
+console.table({name: "bobby", last: "boyd"})
+
+

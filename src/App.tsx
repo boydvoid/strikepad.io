@@ -13,6 +13,7 @@ import { python } from '@codemirror/lang-python'
 import { sql } from '@codemirror/lang-sql'
 
 import "./App.css";
+import { ResponseParser } from "./_components/ResponseParser";
 
 const languages = ['javascript', 'python', 'setup', 'postgres']
 const metaKeywords = ['[lang]', '[dbuser]', '[dbpass]']
@@ -68,13 +69,11 @@ function App() {
 
 	async function invokeLanguage() {
 		const code = removeMeta()
-		console.log(code)
 		const res: string = await invoke(`run_${language}`, {
 			code: code,
 			...(sqlPass ? { pass: sqlPass } : undefined),
 			...(sqlUser ? { user: sqlUser } : undefined)
 		})
-		console.log(res)
 		setRunResponse(res)
 	}
 
@@ -120,12 +119,10 @@ function App() {
 			if (line.includes('[dbuser]')) {
 				const l: string = line.split(']')[1].trim()
 				setSqlUser(l)
-				console.log(sqlUser)
 			}
 			if (line.includes('[dbpass]')) {
 				const l: string = line.split(']')[1].trim()
 				setSqlPass(l)
-				console.log(sqlPass)
 
 			}
 
@@ -202,7 +199,7 @@ function App() {
 					/>
 				</div>
 				<div className="flex basis-1/2 grow whitespace-pre-line">
-					{runResponse}
+					<ResponseParser data={runResponse} language={language} />
 				</div>
 				{
 					showHiddenInput &&
