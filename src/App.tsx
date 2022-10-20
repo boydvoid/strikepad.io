@@ -1,12 +1,12 @@
-import { useEffect, useState, useRef, useCallback, useContext } from "react";
-import reactLogo from "./assets/react.svg";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Platform, platform } from '@tauri-apps/api/os'
-import Editor, { DiffEditor, useMonaco, loader } from "@monaco-editor/react";
-import { Command } from '@tauri-apps/api/shell'
 import { register } from '@tauri-apps/api/globalShortcut';
 import { appWindow } from '@tauri-apps/api/window';
 import CodeMirror from '@uiw/react-codemirror'
+import { vim } from "@replit/codemirror-vim"
+
+import { githubDark } from '@uiw/codemirror-themes-all'
 
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
@@ -192,10 +192,10 @@ function App() {
 						height="100%"
 						width="50vw"
 						maxWidth="50vw"
-						extensions={[javascript(), python(), sql()]}
-						lang="javascript"
+						extensions={[javascript(), python(), sql(), vim()]}
+						lang={language}
 						onChange={onChange}
-						theme="dark"
+						theme={githubDark}
 					/>
 				</div>
 				<div className="flex basis-1/2 grow whitespace-pre-line">

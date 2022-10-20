@@ -65,10 +65,11 @@ async fn run_postgres(code: String, user: &str, pass: &str) -> CommandResult<Str
     let ret = format!("{}",String::from_utf8_lossy(&x.stdout).to_string());
 
     let mut new_ret = String::new();
-    // changes spaces to "_"
+
     for char in ret.chars() {
         if char == ' ' {
-            new_ret.push('^');
+            // pick the most random character
+            new_ret.push('¶');
         } else {
             new_ret.push(char);
         }
