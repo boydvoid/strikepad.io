@@ -179,13 +179,13 @@ function App() {
 	}, [hiddenInput])
 
 	return (
-		<div className="App">
-			<div>
+		<div className="App overflow-hidden">
+			<div className="overflow-hidden">
 				<button onClick={handleButton}>Run</button>
 				<h2>{language}</h2>
 				<h3>Installed: {isInstalled}</h3>
 			</div>
-			<div className="flex h-full">
+			<div className="flex h-full overflow-hidden">
 				<div className="flex basis-1/2 grow">
 					<CodeMirror
 						value={editorValue}

@@ -30,7 +30,7 @@ export const ResponseParser: React.FC<Props> = ({ data, language }) => {
 	}, [language, data])
 
 	return (
-		<div className="flex w-full h-full bg-slate-700 text-slate-300">
+		<div className="flex w-full h-full bg-slate-700 text-slate-300 overflow-auto">
 			{isTable ?
 				<table className='w-full p-4 m-4 rounded bg-slate-500'>
 					<thead>
