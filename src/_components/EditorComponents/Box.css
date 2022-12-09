@@ -1,0 +1,26 @@
+.editable-box {
+	width: 80%;
+	outline: none;
+	min-height: 20px;
+}
+
+
+.md-h1 {
+	font-size: 40px;
+	font-weight: 700;
+}
+
+.md-h2 {
+	font-size: 30px;
+	font-weight: 500;
+}
+
+.md-h3 {
+	font-size: 20px;
+	font-weight: 400;
+}
+
+.md-p {
+	font-size: 14px;
+	font-weight: 400;
+}
