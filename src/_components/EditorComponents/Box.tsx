@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, forwardRef } from 'react'
 import { IndexRouteProps } from 'react-router-dom'
+import { CodeMode } from '../../_pages/Code'
 import { Action, Boxes } from '../../_pages/Notes'
 import { useEditorContext } from '../../_pages/Notes/context'
 import './Box.css'
-
 interface Props {
 	box: Boxes
 	onClick: () => void
@@ -19,10 +19,11 @@ const shortcuts: Shortcut = {
 	'##': 'md-h2',
 	'###': 'md-h3',
 	'p': 'md-p',
+	'```': 'md-code'
 }
 export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox, setBoxField, removeBox }, ref) => {
 	const { state: { wrapperEditable, focusedIndex, boxes, boxFocused }, dispatch } = useEditorContext()
-	const [markdownTag, setMarkdownTag] = useState<string | null>('md-p')
+	const [markdownTag, setMarkdownTag] = useState<string | null>(box.markdown)
 
 	const initialValue = box.initialValue
 	const lastAction = box.lastAction
@@ -32,10 +33,12 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 
 	useEffect(() => {
 		if (lastAction === 'moved') {
+			setMarkdownTag(box.markdown)
 			setBoxField(box.index, null, 'lastAction')
 			divRef.current.innerHTML = box.initialValue
 		}
 		if (box.focused) {
+			console.log('k', getCaretPosInBox())
 			if (lastAction === 'backspace') {
 				setBoxField(box.index, null, 'lastAction')
 				divRef.current.innerHTML = box.initialValue
@@ -54,6 +57,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 
 			if (lastAction === 'new') {
 				setBoxField(box.index, null, 'lastAction')
+				setMarkdownTag(box.markdown)
 				divRef.current.innerHTML = box.initialValue
 			}
 
@@ -61,6 +65,8 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				setBoxField(box.index, null, 'lastAction')
 				divRef.current.innerHTML = box.initialValue
 			}
+
+			detectFormatting()
 
 			// @ts-ignore
 			divRef?.current?.focus()
@@ -102,13 +108,15 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 	}, [box.focused, boxes])
 
 	function getCaretPosInBox() {
-		return window.getSelection()?.getRangeAt(0).endOffset
+		if (document.getSelection()?.type !== 'None') {
+			return document.getSelection()?.getRangeAt(0).endOffset
+		}
 	}
 
 	const handleKeys = (e: any) => {
 		// update box value
-		setBoxField(box.index, divRef.current.innerText, 'value')
 		let caretPos = getCaretPosInBox()
+		setBoxField(box.index, caretPos + 1, 'caretPos')
 		if (e.key === 'Enter') {
 			e.preventDefault()
 			e.stopPropagation()
@@ -130,8 +138,8 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 		if (e.key === 'Backspace') {
 			if (divRef.current.id === '0') {
 				return
-
 			}
+
 			let text = divRef.current.innerText
 
 			if (caretPos === 0) {
@@ -139,7 +147,10 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				let currentText = divRef.current.innerText
 				removeBox(currentText)
 			}
+
+			// setBoxField(box.index, caretPos - 2, 'caretPos')
 		}
+
 		if (e.key === 'ArrowDown') {
 			if (boxes[box.index + 1] || boxes[box.index + 1] !== undefined) {
 				setBoxField(box.index + 1, caretPos, 'caretPos')
@@ -182,8 +193,11 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 					setBoxField(box.index - 1, true, 'focused')
 					setBoxField(box.index - 1, true, 'focused')
 					setBoxField(box.index - 1, 'left', 'lastAction')
+
 				}
 			}
+
+			setBoxField(box.index, caretPos - 2, 'caretPos')
 		}
 
 		if (e.key === 'Tab') {
@@ -213,34 +227,112 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 		sel?.addRange(range);
 	}
 
+	useEffect(() => {
+		if (wrapperEditable) return
+		if (!divRef.current) return
+		setBoxField(box.index, divRef?.current?.innerHTML, 'value')
+
+	}, [divRef?.current?.innerText])
+
+
+	useEffect(() => {
+		setBoxField(box.index, markdownTag, 'markdown')
+	}, [markdownTag])
+
+	function detectFormatting() {
+		const text = divRef.current.innerText
+		const html = divRef.current.innerHTML
+
+		if (text.length <= 4) {
+
+			if (html.includes('#&nbsp;')) {
+				divRef.current.innerHTML = ''
+				setMarkdownTag('md-h1')
+			}
+			if (html.includes('##&nbsp;')) {
+				divRef.current.innerHTML = ''
+				setMarkdownTag('md-h2')
+			}
+			if (html.includes('###&nbsp;')) {
+				divRef.current.innerHTML = ''
+				setMarkdownTag('md-h3')
+			}
+
+			if (html.includes('```&nbsp;')) {
+				divRef.current.innerHTML = ''
+				setMarkdownTag('md-code')
+			}
+		}
+
+	}
+
 	return (
 		<div className="flex">
 			<p className="absolute select-none left-0">
 				{'>'}
 			</p>
-			<div
-				ref={divRef}
-				onFocus={() => {
+			{
+				markdownTag === 'md-code' ?
+					<>
+						<div
+							ref={divRef}
+							onFocus={() => {
 
-					dispatch({
-						type: 'set_focused_index',
-						payload: box.index
-					})
-					setBoxField(box.index, true, 'focused')
-				}
-				}
-				onBlur={() => {
-					setBoxField(box.index, false, 'focused')
-				}}
-				data-index={box.index}
-				id={id.toString()}
-				className={`editable-box w-full ${markdownTag} caret-black ${box.focused ? 'bg-sky-50' : ''}`}
-				onClick={onClick}
-				onKeyDown={handleKeys}
-				contentEditable
-				suppressContentEditableWarning >
-			</div>
-		</div>
+								dispatch({
+									type: 'set_focused_index',
+									payload: box.index
+								})
+								setBoxField(box.index, true, 'focused')
+							}
+							}
+							onBlur={() => {
+								setBoxField(box.index, false, 'focused')
+							}}
+							data-index={box.index}
+							id={id.toString()}
+							className={`editable-box w-full ${markdownTag} caret-black ${box.focused ? 'bg-sky-50' : ''}`}
+							onClick={() => {
+								setBoxField(box.index, getCaretPosInBox(), 'caretPos')
+								onClick()
+							}}
+							onKeyDown={handleKeys}
+							contentEditable
+							suppressContentEditableWarning >
+						</div>
+						{
+							box.focused &&
+
+							<CodeMode code={box.value} />
+						}
+					</>
+					:
+					<div
+						ref={divRef}
+						onFocus={() => {
+
+							dispatch({
+								type: 'set_focused_index',
+								payload: box.index
+							})
+							setBoxField(box.index, true, 'focused')
+						}
+						}
+						onBlur={() => {
+							setBoxField(box.index, false, 'focused')
+						}}
+						data-index={box.index}
+						id={id.toString()}
+						className={`editable-box w-full ${markdownTag} caret-black ${box.focused ? 'bg-sky-50' : ''}`}
+						onClick={() => {
+							setBoxField(box.index, getCaretPosInBox(), 'caretPos')
+							onClick()
+						}}
+						onKeyDown={handleKeys}
+						contentEditable
+						suppressContentEditableWarning >
+					</div>
+			}
+		</div >
 	)
 }
 )

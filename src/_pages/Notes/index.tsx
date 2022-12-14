@@ -152,7 +152,7 @@ export const EditPage: React.FC<Props> = () => {
 			index: newIndex,
 			value: '',
 			initialValue,
-			markdown: 'H1',
+			markdown: 'md-p',
 			focused: true,
 			lastAction: 'new',
 			caretPos: 0
@@ -236,10 +236,78 @@ export const EditPage: React.FC<Props> = () => {
 	}
 
 
+	useEffect(() => {
+		document.addEventListener('selectionchange', () => {
+			dispatch({
+				type: 'set_wrapper_editable',
+				payload: document.getSelection()?.type === 'Range' ? true : false
+			})
+		})
 
+		return () => {
+			document.removeEventListener('selectionchange', () => {
+			})
+		}
+	}, [])
+
+
+	function handleWrapperKeys(e: any) {
+		console.log(e)
+		if (e.key === 'Backspace') {
+			e.preventDefault()
+			let cloneBoxes = [...boxes]
+			console.log(document.getSelection()?.getRangeAt(0))
+			const range = document.getSelection()?.getRangeAt(0)
+			const caretStart = range?.startOffset
+			const caretEnd = range?.endOffset
+
+			const endContainer = range?.endContainer
+			const startContainer = range?.startContainer
+			const indexToDelete = []
+
+			let newBoxes: Boxes[] = []
+			if (startContainer !== undefined && endContainer !== undefined) {
+				cloneBoxes.map((item) => {
+					if (item.id > startContainer.parentElement.id && item.id < endContainer.parentElement.id) {
+						console.log('delete', item)
+					} else {
+						let startTextLength = startContainer.textContent.length
+						let endTextLength = startContainer.textContent.length
+
+						newBoxes.push(item)
+					}
+				})
+			}
+
+			newBoxes = newBoxes.map((item, key) => {
+				if (key === newBoxes.length - 1) {
+					console.log(item)
+					item.lastAction = 'moved'
+					item.initialValue = item.value
+				}
+				item.id = key
+				item.index = key
+				return item
+			})
+
+			dispatch({
+				type: 'set_boxes',
+				payload: newBoxes
+			})
+
+
+			// get selection start and end
+			// if box is between the start and the end delete it 
+			// if the box is the start or the end delete all the text that is selected, if it is all selected delete the box
+		}
+	}
 	return (
 		<>
-			<div ref={wrapperRef} id="fluid-wrapper" className='flex flex-col w-4/5 max-w-[800px]' contentEditable={false} suppressContentEditableWarning>
+			<div ref={wrapperRef} id="fluid-wrapper" className='flex flex-col w-4/5 max-w-[800px]' contentEditable={wrapperEditable} onKeyDown={(e) => {
+				if (!wrapperEditable) return
+				handleWrapperKeys(e)
+			}}
+				suppressContentEditableWarning>
 				{boxes.map((i, key) => (
 					<Box
 						key={key}

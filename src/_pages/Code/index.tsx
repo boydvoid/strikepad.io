@@ -18,9 +18,10 @@ import { ResponseParser } from '../../_components/ResponseParser';
 const languages = ['javascript', 'python', 'setup', 'postgres']
 const metaKeywords = ['[lang]', '[dbuser]', '[dbpass]']
 
-interface Props {}
-export const CodeMode: React.FC<Props> = () => {
-	const [editorValue, setEditorValue] = useState("")
+interface Props {
+	code?: string
+}
+export const CodeMode: React.FC<Props> = ({ code }) => {
 	const [hiddenInput, setHiddenInput] = useState("")
 	const [showHiddenInput, setShowHiddenInput] = useState(false)
 	const [runResponse, setRunResponse] = useState("")
@@ -29,7 +30,7 @@ export const CodeMode: React.FC<Props> = () => {
 	const [os, setOs] = useState<Platform | null>(null)
 	const [sqlPass, setSqlPass] = useState<string | null>(null)
 	const [sqlUser, setSqlUser] = useState<string | null>(null)
-	const editorValueRef = useRef(editorValue)
+	// const editorValueRef = useRef(editorValue)
 
 	useEffect(() => {
 		if (os) return
@@ -69,31 +70,35 @@ export const CodeMode: React.FC<Props> = () => {
 	}
 
 	async function invokeLanguage() {
-		const code = removeMeta()
+		let code = removeMeta()
+		code = code?.replace(/[\u2018\u2019]/g, "'");
 		const res: string = await invoke(`run_${language}`, {
 			code: code,
 			...(sqlPass ? { pass: sqlPass } : undefined),
 			...(sqlUser ? { user: sqlUser } : undefined)
 		})
+		console.log('res', res)
 		setRunResponse(res)
 	}
 
 	function removeMeta() {
-		let lines = editorValueRef.current.split("\n")
+		let lines = code?.split("\n")
 
-		let newLines = lines.map(line => {
+		console.log('l', lines)
+		let newLines = lines?.map(line => {
 			if (metaKeywords.indexOf(line.split(" ")[0]) > -1) {
 				return '\n'
 			} else {
 				return '\n' + line
 			}
 		})
-		return newLines.join("")
+		console.log(newLines?.join(""))
+		return newLines?.join("")
 	}
 
 	useEffect(() => {
 		const reg = async () => {
-			await appWindow.setAlwaysOnTop(true)
+			await appWindow.setAlwaysOnTop(false)
 
 			await register('Alt+Shift+Space', async () => {
 				if (await appWindow.isVisible()) {
@@ -110,13 +115,13 @@ export const CodeMode: React.FC<Props> = () => {
 	useEffect(() => {
 		checkForLanguage()
 		checkForUser()
-	}, [editorValue])
+	}, [code])
 
 	const checkForUser = () => {
 
 		const valueByLine = splitByLine()
 
-		valueByLine.map((line: string, i: number) => {
+		valueByLine?.map((line: string, i: number) => {
 			if (line.includes('[dbuser]')) {
 				const l: string = line.split(']')[1].trim()
 				setSqlUser(l)
@@ -131,10 +136,10 @@ export const CodeMode: React.FC<Props> = () => {
 		)
 	}
 
-	const onChange = (value, viewUpdate) => {
-		setEditorValue(value)
-		editorValueRef.current = value
-	}
+	// const onChange = (value, viewUpdate) => {
+	// 	setEditorValue(value)
+	// 	// editorValueRef.current = value
+	// }
 
 	/**
 	* Checks for the Language
@@ -143,12 +148,12 @@ export const CodeMode: React.FC<Props> = () => {
 	function checkForLanguage() {
 		const valueByLine = splitByLine()
 
-		valueByLine.map((line: string, i: number) => {
+		valueByLine?.map((line: string, i: number) => {
 			if (line.includes('[lang]')) {
 				const l: string = line.split(']')[1].trim()
 				if (languages.indexOf(l) > -1) {
 					setLanguage(l)
-					setEditorValue('')
+					// setEditorValue('')
 				}
 			} else {
 			}
@@ -167,7 +172,7 @@ export const CodeMode: React.FC<Props> = () => {
 
 
 	function splitByLine() {
-		return editorValueRef.current.split('\n')
+		// return editorValueRef.current.split('\n')
 	}
 
 	const handleHiddenSubmit = useCallback((e: React.FormEvent) => {
@@ -180,7 +185,7 @@ export const CodeMode: React.FC<Props> = () => {
 	}, [hiddenInput])
 
 	return (
-		<div className="App overflow-hidden">
+		<div className="absolute overflow-hidden bottom-0 w-full">
 			<div className="overflow-hidden">
 				<button onClick={handleButton}>Run</button>
 				<h2>{language}</h2>
@@ -188,6 +193,7 @@ export const CodeMode: React.FC<Props> = () => {
 			</div>
 			<div className="flex h-full overflow-hidden">
 				<div className="flex basis-1/2 grow">
+					{/*
 					<CodeMirror
 						value={editorValue}
 						height="100%"
@@ -198,6 +204,7 @@ export const CodeMode: React.FC<Props> = () => {
 						onChange={onChange}
 						theme={githubDark}
 					/>
+*/}
 				</div>
 				<div className="flex basis-1/2 grow whitespace-pre-line">
 					<ResponseParser data={runResponse} language={language} />
