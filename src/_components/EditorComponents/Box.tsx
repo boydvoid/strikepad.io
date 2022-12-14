@@ -31,16 +31,44 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 	const divRef = useRef<any>(null)
 
 	useEffect(() => {
+		if (lastAction === 'moved') {
+			setBoxField(box.index, null, 'lastAction')
+			divRef.current.innerHTML = box.initialValue
+		}
 		if (box.focused) {
-			if (lastAction === 'backspace' || lastAction === 'left') {
+			if (lastAction === 'backspace') {
+				setBoxField(box.index, null, 'lastAction')
+				divRef.current.innerHTML = box.initialValue
+				// this is depressing but it works so well
+				setTimeout(() => {
+					range.setStart(divRef.current?.childNodes[0], box.caretPos)
+					range.collapse(true)
+					sel?.removeAllRanges()
+					sel?.addRange(range)
+				}, 1)
+			}
+			if (lastAction === 'left') {
+				setBoxField(box.index, null, 'lastAction')
 				placeCaretAtEnd(divRef.current)
 			}
+
+			if (lastAction === 'new') {
+				setBoxField(box.index, null, 'lastAction')
+				divRef.current.innerHTML = box.initialValue
+			}
+
+			if (lastAction === 'enter') {
+				setBoxField(box.index, null, 'lastAction')
+				divRef.current.innerHTML = box.initialValue
+			}
+
 			// @ts-ignore
 			divRef?.current?.focus()
 			let range = document.createRange()
 			let sel = window.getSelection()
 
 			if (box.lastAction === 'up' || box.lastAction === 'down') {
+				setBoxField(box.index, null, 'lastAction')
 				// this is depressing but it works so well
 				setTimeout(() => {
 					if (box.caretPos > divRef.current.innerText.length) {
@@ -71,13 +99,15 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				payload: false
 			})
 		}
-	}, [box.focused])
+	}, [box.focused, boxes])
 
 	function getCaretPosInBox() {
 		return window.getSelection()?.getRangeAt(0).endOffset
 	}
 
-	const handleEnter = (e: any) => {
+	const handleKeys = (e: any) => {
+		// update box value
+		setBoxField(box.index, divRef.current.innerText, 'value')
 		let caretPos = getCaretPosInBox()
 		if (e.key === 'Enter') {
 			e.preventDefault()
@@ -92,6 +122,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 			let currentText = text.substr(0, caretPos)
 			let removedText = text.substr(caretPos)
 			setBoxField(box.index, currentText, 'value')
+			divRef.current.innerHTML = currentText
 
 			addBox(removedText)
 		}
@@ -105,12 +136,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 
 			if (caretPos === 0) {
 				e.preventDefault()
-
-				// append text to previous line
-				//
 				let currentText = divRef.current.innerText
-
-
 				removeBox(currentText)
 			}
 		}
@@ -210,12 +236,13 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				id={id.toString()}
 				className={`editable-box w-full ${markdownTag} caret-black ${box.focused ? 'bg-sky-50' : ''}`}
 				onClick={onClick}
-				onKeyDown={handleEnter}
+				onKeyDown={handleKeys}
 				contentEditable
 				suppressContentEditableWarning >
-				{initialValue && <div dangerouslySetInnerHTML={{ __html: initialValue }}></div>}
 			</div>
 		</div>
 	)
 }
 )
+
+				// {box.initialValue && <div dangerouslySetInnerHTML={{ __html: box.initialValue }}></div>}

@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef, useCallback, useMemo, cloneElement 
 import { Box } from '../../_components/EditorComponents/Box'
 import { useEditorContext } from './context'
 
-export type Action = 'enter' | 'backspace' | 'left' | 'right' | 'up' | 'down' | null
+export type Action = 'enter' | 'backspace' | 'left' | 'right' | 'up' | 'down' | 'new' | 'moved' | null
 export interface Boxes {
 	id: number
 	index: number
-	value: string // just used for storing data
+	value?: string // just used for storing data
 	initialValue?: string
 	markdown: string
 	focused: boolean
@@ -142,19 +142,19 @@ export const EditPage: React.FC<Props> = () => {
 
 	useEffect(() => {
 		console.log('b', boxes)
-
 	}, [boxes])
 
 	function addBox(initialValue?: string) {
 		// get box location in array splice
+		const newIndex = focusedIndex + 1
 		const newBox: Boxes = {
 			id: focusedIndex + 1,
-			index: focusedIndex + 1,
+			index: newIndex,
 			value: '',
-			initialValue: initialValue,
+			initialValue,
 			markdown: 'H1',
 			focused: true,
-			lastAction: 'enter',
+			lastAction: 'new',
 			caretPos: 0
 		}
 
@@ -165,6 +165,10 @@ export const EditPage: React.FC<Props> = () => {
 		cloneBoxes.map((box, key) => {
 			box.id = key
 			box.index = key
+			if (box.index > newIndex) {
+				box.lastAction = 'moved'
+				box.initialValue = box.value
+			}
 			return box
 		})
 
@@ -181,12 +185,23 @@ export const EditPage: React.FC<Props> = () => {
 
 	function removeBox(appendText?: string) {
 		const cloneBoxes: Boxes[] = [...boxes]
-		cloneBoxes[focusedIndex - 1].focused = true
-		cloneBoxes[focusedIndex - 1].lastAction = 'backspace'
-		console.log(cloneBoxes)
+		const prevIndex = cloneBoxes[focusedIndex - 1]
+		if (prevIndex.value !== undefined) {
+			prevIndex.caretPos = prevIndex.value.length
+		}
+		prevIndex.focused = true
+		prevIndex.lastAction = 'backspace'
+		if (appendText !== undefined) {
+			prevIndex.initialValue = prevIndex.value + appendText
+		}
 		cloneBoxes.splice(focusedIndex, 1)
-		cloneBoxes.map((box, key) => box.index = key)
-		console.log(cloneBoxes)
+		cloneBoxes.map((box, key) => {
+			if (box.index > focusedIndex - 1) {
+				box.lastAction = 'moved'
+				box.initialValue = box.value
+			}
+			box.index = key
+		})
 		dispatch({
 			type: 'set_boxes',
 			payload: cloneBoxes
@@ -197,7 +212,6 @@ export const EditPage: React.FC<Props> = () => {
 	function setBoxField(index: number, value: any, field: any, triggerWrapper?: boolean) {
 		const cloneBoxes: Boxes[] = [...boxes]
 		cloneBoxes[index][field] = value
-		console.log(cloneBoxes)
 		dispatch({
 			type: 'set_boxes',
 			payload: cloneBoxes
