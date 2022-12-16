@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useId } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Platform, platform } from '@tauri-apps/api/os'
 import { register } from '@tauri-apps/api/globalShortcut';
@@ -20,12 +20,12 @@ const metaKeywords = ['[lang]', '[dbuser]', '[dbpass]']
 
 interface Props {
 	code?: string
+	language?: typeof languages
 }
-export const CodeMode: React.FC<Props> = ({ code }) => {
+export const CodeMode: React.FC<Props> = ({ code, language }) => {
 	const [hiddenInput, setHiddenInput] = useState("")
 	const [showHiddenInput, setShowHiddenInput] = useState(false)
 	const [runResponse, setRunResponse] = useState("")
-	const [language, setLanguage] = useState('setup')
 	const [isInstalled, setIsInstalled] = useState<string | null>(null)
 	const [os, setOs] = useState<Platform | null>(null)
 	const [sqlPass, setSqlPass] = useState<string | null>(null)
@@ -61,6 +61,10 @@ export const CodeMode: React.FC<Props> = ({ code }) => {
 		}
 	}, [handleKeyListen])
 
+	useEffect(() => {
+		console.log('lan')
+	}, [language])
+
 	async function handleButton() {
 		if (language === 'setup') {
 			setRunResponse("You must select a language.")
@@ -70,6 +74,7 @@ export const CodeMode: React.FC<Props> = ({ code }) => {
 	}
 
 	async function invokeLanguage() {
+		console.log('lang', language)
 		let code = removeMeta()
 		code = code?.replace(/[\u2018\u2019]/g, "'");
 		const res: string = await invoke(`run_${language}`, {
@@ -185,28 +190,14 @@ export const CodeMode: React.FC<Props> = ({ code }) => {
 	}, [hiddenInput])
 
 	return (
-		<div className="absolute overflow-hidden bottom-0 w-full">
+		<div className="absolute overflow-hidden right-0 bg-blue-500 w-1/4 h-full">
 			<div className="overflow-hidden">
 				<button onClick={handleButton}>Run</button>
 				<h2>{language}</h2>
 				<h3>Installed: {isInstalled}</h3>
 			</div>
 			<div className="flex h-full overflow-hidden">
-				<div className="flex basis-1/2 grow">
-					{/*
-					<CodeMirror
-						value={editorValue}
-						height="100%"
-						width="50vw"
-						maxWidth="50vw"
-						extensions={[javascript(), python(), sql(), vim()]}
-						lang={language}
-						onChange={onChange}
-						theme={githubDark}
-					/>
-*/}
-				</div>
-				<div className="flex basis-1/2 grow whitespace-pre-line">
+				<div className="flex grow whitespace-pre-line">
 					<ResponseParser data={runResponse} language={language} />
 				</div>
 				{

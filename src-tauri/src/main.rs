@@ -48,6 +48,14 @@ fn run_python(code: &[u8]) -> String {
     let x = Command::new("python3").arg("../generatedFiles/code.py").output().expect("failed running code");
     format!("{}", String::from_utf8_lossy(&x.stdout))
 }
+ 
+#[tauri::command]
+fn run_save(json: &[u8], name: String) -> String {
+    let filename= format!("../notes/{}.json", name);
+    let mut file = File::create(filename).expect("Could not create file");
+    file.write_all(json).expect("There wasoan error writing the file");
+    return "done".to_string()
+}
 
 #[tauri::command]
 async fn run_postgres(code: String, user: &str, pass: &str) -> CommandResult<String, CommandError>{
@@ -91,11 +99,10 @@ fn python_check() -> String {
     format!("{}", String::from_utf8_lossy(&x.stdout))
 }
 
-
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![test_print, run_javascript, run_python, run_postgres, javascript_check, python_check ])
+        .invoke_handler(tauri::generate_handler![test_print, run_javascript, run_python, run_postgres, javascript_check, python_check, run_save ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

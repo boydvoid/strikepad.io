@@ -1,5 +1,7 @@
+import { invoke } from '@tauri-apps/api'
 import React, { useState, useRef, useEffect, forwardRef } from 'react'
 import { IndexRouteProps } from 'react-router-dom'
+import { v4 } from 'uuid'
 import { CodeMode } from '../../_pages/Code'
 import { Action, Boxes } from '../../_pages/Notes'
 import { useEditorContext } from '../../_pages/Notes/context'
@@ -22,8 +24,10 @@ const shortcuts: Shortcut = {
 	'```': 'md-code'
 }
 export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox, setBoxField, removeBox }, ref) => {
-	const { state: { wrapperEditable, focusedIndex, boxes, boxFocused }, dispatch } = useEditorContext()
+	const { state: { wrapperEditable, focusedIndex, boxes, boxFocused,
+	}, dispatch } = useEditorContext()
 	const [markdownTag, setMarkdownTag] = useState<string | null>(box.markdown)
+	const [language, setLanguage] = useState<any>('setup')
 
 	const initialValue = box.initialValue
 	const lastAction = box.lastAction
@@ -32,13 +36,29 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 	const divRef = useRef<any>(null)
 
 	useEffect(() => {
+		// save
+
+
+		async function save() {
+
+			console.log('save', boxes)
+			const res: string = await invoke(`run_save`, {
+				json: JSON.stringify(boxes),
+				name: v4().toString()
+			})
+			console.log('save', res)
+		}
+
+		save()
+	}, [value])
+
+	useEffect(() => {
 		if (lastAction === 'moved') {
 			setMarkdownTag(box.markdown)
 			setBoxField(box.index, null, 'lastAction')
 			divRef.current.innerHTML = box.initialValue
 		}
 		if (box.focused) {
-			console.log('k', getCaretPosInBox())
 			if (lastAction === 'backspace') {
 				setBoxField(box.index, null, 'lastAction')
 				divRef.current.innerHTML = box.initialValue
@@ -118,21 +138,26 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 		let caretPos = getCaretPosInBox()
 		setBoxField(box.index, caretPos + 1, 'caretPos')
 		if (e.key === 'Enter') {
-			e.preventDefault()
-			e.stopPropagation()
+			if (e.shiftKey) {
 
-			if (window.getSelection()?.type === 'Range') {
-				return
+			} else {
+
+				e.preventDefault()
+				e.stopPropagation()
+
+				if (window.getSelection()?.type === 'Range') {
+					return
+				}
+				let caretPos = getCaretPosInBox()
+				let text = divRef.current.innerText
+
+				let currentText = text.substr(0, caretPos)
+				let removedText = text.substr(caretPos)
+				setBoxField(box.index, currentText, 'value')
+				divRef.current.innerHTML = currentText
+
+				addBox(removedText)
 			}
-			let caretPos = getCaretPosInBox()
-			let text = divRef.current.innerText
-
-			let currentText = text.substr(0, caretPos)
-			let removedText = text.substr(caretPos)
-			setBoxField(box.index, currentText, 'value')
-			divRef.current.innerHTML = currentText
-
-			addBox(removedText)
 		}
 
 		if (e.key === 'Backspace') {
@@ -241,10 +266,17 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 
 	function detectFormatting() {
 		const text = divRef.current.innerText
-		const html = divRef.current.innerHTML
+		let html = divRef.current.innerHTML
+
+		if (html.includes("**javascript")) {
+			console.log('includes')
+			html = html.replace('**javascript', '')
+			console.log(html)
+			divRef.current.innerHTML = html
+			setLanguage('javascript')
+		}
 
 		if (text.length <= 4) {
-
 			if (html.includes('#&nbsp;')) {
 				divRef.current.innerHTML = ''
 				setMarkdownTag('md-h1')
@@ -268,9 +300,6 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 
 	return (
 		<div className="flex">
-			<p className="absolute select-none left-0">
-				{'>'}
-			</p>
 			{
 				markdownTag === 'md-code' ?
 					<>
@@ -299,11 +328,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 							contentEditable
 							suppressContentEditableWarning >
 						</div>
-						{
-							box.focused &&
-
-							<CodeMode code={box.value} />
-						}
+						<CodeMode code={box.value} language={language} />
 					</>
 					:
 					<div
