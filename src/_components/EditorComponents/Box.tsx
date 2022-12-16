@@ -6,6 +6,10 @@ import { CodeMode } from '../../_pages/Code'
 import { Action, Boxes } from '../../_pages/Notes'
 import { useEditorContext } from '../../_pages/Notes/context'
 import './Box.css'
+
+import PouchDB from 'pouchdb'
+
+let db = new PouchDB('strike')
 interface Props {
 	box: Boxes
 	onClick: () => void

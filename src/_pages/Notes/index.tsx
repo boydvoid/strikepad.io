@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, cloneElement } from 'react'
 import { Box } from '../../_components/EditorComponents/Box'
+import { NoteSelector } from '../../_components/NoteSelector'
 import { useEditorContext } from './context'
 
 export type Action = 'enter' | 'backspace' | 'left' | 'right' | 'up' | 'down' | 'new' | 'moved' | null
@@ -303,6 +304,7 @@ export const EditPage: React.FC<Props> = () => {
 	}
 	return (
 		<>
+			<NoteSelector />
 			<div ref={wrapperRef} id="fluid-wrapper" className='flex flex-col w-4/5 max-w-[800px]' contentEditable={wrapperEditable} onKeyDown={(e) => {
 				if (!wrapperEditable) return
 				handleWrapperKeys(e)
