@@ -1,15 +1,12 @@
-import { invoke } from '@tauri-apps/api'
 import React, { useState, useRef, useEffect, forwardRef } from 'react'
-import { IndexRouteProps } from 'react-router-dom'
-import { v4 } from 'uuid'
+import { useDB } from '../../hooks/useDB'
 import { CodeMode } from '../../_pages/Code'
-import { Action, Boxes } from '../../_pages/Notes'
+import { Boxes } from '../../_pages/Notes'
 import { useEditorContext } from '../../_pages/Notes/context'
+import { getCaretPosInBox } from './helpers'
 import './Box.css'
+import { ListBox } from './_components/List'
 
-import PouchDB from 'pouchdb'
-
-let db = new PouchDB('strike')
 interface Props {
 	box: Boxes
 	onClick: () => void
@@ -24,37 +21,28 @@ const shortcuts: Shortcut = {
 	'#': 'md-h1',
 	'##': 'md-h2',
 	'###': 'md-h3',
-	'p': 'md-p',
-	'```': 'md-code'
+	'```': 'md-code',
 }
 export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox, setBoxField, removeBox }, ref) => {
-	const { state: { wrapperEditable, focusedIndex, boxes, boxFocused,
+	const { state: { wrapperEditable, selectedNote
 	}, dispatch } = useEditorContext()
+
+	const db = useDB()
 	const [markdownTag, setMarkdownTag] = useState<string | null>(box.markdown)
 	const [language, setLanguage] = useState<any>('setup')
 
-	const initialValue = box.initialValue
-	const lastAction = box.lastAction
+	const boxes = selectedNote?.json
 
-	const [value, setValue] = useState(initialValue)
+	const initialValue = box.initialValue
+	const lastAction = box?.lastAction
+
 	const divRef = useRef<any>(null)
 
 	useEffect(() => {
-		// save
-
-
-		async function save() {
-
-			console.log('save', boxes)
-			const res: string = await invoke(`run_save`, {
-				json: JSON.stringify(boxes),
-				name: v4().toString()
-			})
-			console.log('save', res)
-		}
-
-		save()
-	}, [value])
+		if (!box) return
+		if (!divRef.current) return
+		divRef.current.innerHTML = box.initialValue
+	}, [box])
 
 	useEffect(() => {
 		if (lastAction === 'moved') {
@@ -129,19 +117,17 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				payload: false
 			})
 		}
-	}, [box.focused, boxes])
+	}, [box.focused, selectedNote])
 
-	function getCaretPosInBox() {
-		if (document.getSelection()?.type !== 'None') {
-			return document.getSelection()?.getRangeAt(0).endOffset
-		}
-	}
 
 	const handleKeys = (e: any) => {
+		// TODO: CLEEEEEAAAANNNN
+		if (!divRef.current) return
 		// update box value
 		let caretPos = getCaretPosInBox()
 		setBoxField(box.index, caretPos + 1, 'caretPos')
-		if (e.key === 'Enter') {
+
+		if (markdownTag !== 'md-ul' && e.key === 'Enter') {
 			if (e.shiftKey) {
 
 			} else {
@@ -158,6 +144,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				let currentText = text.substr(0, caretPos)
 				let removedText = text.substr(caretPos)
 				setBoxField(box.index, currentText, 'value')
+				setBoxField(box.index, currentText, 'initialValue')
 				divRef.current.innerHTML = currentText
 
 				addBox(removedText)
@@ -165,6 +152,11 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 		}
 
 		if (e.key === 'Backspace') {
+			if (markdownTag === 'md-ul') {
+				if (divRef.current.childNodes.length !== 1) {
+					return
+				}
+			}
 			if (divRef.current.id === '0') {
 				return
 			}
@@ -227,25 +219,23 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 			}
 
 			setBoxField(box.index, caretPos - 2, 'caretPos')
+
 		}
 
 		if (e.key === 'Tab') {
 			e.preventDefault()
 		}
-	}
+
+		db.collection('notes').doc({ id: selectedNote.id }).update({
+			json: selectedNote.json
+		})
 
 
-
-	function handleOnChange(e: any) {
-		const value = e.target.innerText
-		setValue(value)
-		setBoxField(box.index, value, 'value')
 	}
 
 	function positionCursor() {
 		divRef.current?.setSelectionRange(4, 5)
 	}
-
 
 	function placeCaretAtEnd(el: any) {
 		const range = document.createRange()
@@ -260,6 +250,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 		if (wrapperEditable) return
 		if (!divRef.current) return
 		setBoxField(box.index, divRef?.current?.innerHTML, 'value')
+		setBoxField(box.index, divRef?.current?.innerHTML, 'initialValue')
 
 	}, [divRef?.current?.innerText])
 
@@ -269,13 +260,12 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 	}, [markdownTag])
 
 	function detectFormatting() {
+		if (!divRef.current) return
 		const text = divRef.current.innerText
 		let html = divRef.current.innerHTML
 
 		if (html.includes("**javascript")) {
-			console.log('includes')
 			html = html.replace('**javascript', '')
-			console.log(html)
 			divRef.current.innerHTML = html
 			setLanguage('javascript')
 		}
@@ -298,19 +288,24 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				divRef.current.innerHTML = ''
 				setMarkdownTag('md-code')
 			}
+
+			if (html.includes('-&nbsp;')) {
+				divRef.current.innerHTML = ''
+				setMarkdownTag('md-ul')
+			}
 		}
 
 	}
 
-	return (
-		<div className="flex">
-			{
-				markdownTag === 'md-code' ?
+	function getHTML() {
+
+		switch (markdownTag) {
+			case 'md-code':
+				return (
 					<>
 						<div
 							ref={divRef}
 							onFocus={() => {
-
 								dispatch({
 									type: 'set_focused_index',
 									payload: box.index
@@ -323,7 +318,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 							}}
 							data-index={box.index}
 							id={id.toString()}
-							className={`editable-box w-full ${markdownTag} caret-black ${box.focused ? 'bg-sky-50' : ''}`}
+							className={`editable-box w-full ${markdownTag} caret-black`}
 							onClick={() => {
 								setBoxField(box.index, getCaretPosInBox(), 'caretPos')
 								onClick()
@@ -334,32 +329,47 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 						</div>
 						<CodeMode code={box.value} language={language} />
 					</>
-					:
+				)
+			case 'md-ul':
+				return (
+					<ListBox ref={divRef} box={box} id={id} onClick={onClick} handleKeys={handleKeys} setBoxField={setBoxField} />
+				)
+			default:
+				return (
 					<div
 						ref={divRef}
 						onFocus={() => {
-
 							dispatch({
 								type: 'set_focused_index',
 								payload: box.index
 							})
-							setBoxField(box.index, true, 'focused')
+							setBoxField(box?.index, true, 'focused')
 						}
 						}
 						onBlur={() => {
-							setBoxField(box.index, false, 'focused')
+							setBoxField(box?.index, false, 'focused')
 						}}
 						data-index={box.index}
 						id={id.toString()}
-						className={`editable-box w-full ${markdownTag} caret-black ${box.focused ? 'bg-sky-50' : ''}`}
+						className={`editable-box w-full ${markdownTag} caret-black p-2`}
 						onClick={() => {
 							setBoxField(box.index, getCaretPosInBox(), 'caretPos')
 							onClick()
 						}}
 						onKeyDown={handleKeys}
+						data-placeholder="Enter Text Here..."
 						contentEditable
 						suppressContentEditableWarning >
 					</div>
+				)
+
+		}
+	}
+
+	return (
+		<div className="flex">
+			{
+				getHTML()
 			}
 		</div >
 	)

@@ -1,5 +1,7 @@
-import PouchDB from 'pouchdb'
+// @ts-ignore
+import Localbase from 'localbase'
+
 
 export const useDB = () => {
-	return new PouchDB('strike')
+	return new Localbase('strike')
 }

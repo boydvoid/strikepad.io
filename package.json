@@ -22,10 +22,12 @@
     "@uiw/codemirror-themes-all": "^4.12.4",
     "@uiw/react-codemirror": "^4.12.3",
     "codemirror": "^6.0.1",
-    "pouchdb": "^8.0.0",
+    "localbase": "^0.7.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.4.2",
+    "rxdb": "^13.15.3",
+    "rxjs": "^7.8.0",
     "uuid": "^9.0.0",
     "uuidv4": "^6.2.13"
   },

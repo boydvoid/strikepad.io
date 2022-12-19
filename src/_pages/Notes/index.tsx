@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, cloneElement } from 'react'
+import useNotesApi from '../../api/notes'
+import { useDB } from '../../hooks/useDB'
 import { Box } from '../../_components/EditorComponents/Box'
+import { MetaItem } from '../../_components/Library/MetaItem'
 import { NoteSelector } from '../../_components/NoteSelector'
 import { useEditorContext } from './context'
 
@@ -18,132 +21,18 @@ export interface Boxes {
 interface Props { }
 
 export const EditPage: React.FC<Props> = () => {
-	const { state: { wrapperEditable, focusedIndex, boxes, boxFocused }, dispatch } = useEditorContext()
-	// const [elementIsFocused, setElementIsFocused] = useState(false)
-	// const [boxTextData, setBoxTextData] = useState<{ [id: number]: string }>({})
-	// const [isInit, setIsInit] = useState(false)
+	const { state: { wrapperEditable, focusedIndex, selectedNote }, dispatch } = useEditorContext()
+	const [titleValue, setTitleValue] = useState<any>('')
+	const db = useDB()
+	const { getNotesList, updateNotesList } = useNotesApi()
 	const wrapperRef = useRef<any>(null)
 	const boxRefs = useRef<any>([])
 
-
-	// const keyPressedRef = useRef<any>(null)
-
-	// useEffect(() => {
-	// 	setIsInit(true)
-	// 	if (!isInit) return
-	// 	// window.addEventListener('paste', handlePaste)
-	// 	// window.addEventListener('keydown', handleKeydown)
-	// 	window.addEventListener('click', handleClickListen)
-	// 	return () => {
-	// 		// window.removeEventListener('keydown', handleKeydown)
-	// 		window.removeEventListener('click', () => {
-	// 		})
-	// 	}
-	// }, [isInit])
-
-	// function handlePaste(e) {
-	// 	e.preventDefault()
-	// 	let data = e.clipboardData.getData('text')
-	// 	// let example = new DOMParser().parseFromString(data, 'text/html')
-	// 	// data = example.querySelectorAll('body')
-	// 	// data = data.map(tag => {
-	// 	// 	tag.removeAttribute('style')
-	// 	// 	tag.removeAttribute('class')
-	// 	// 	return tag
-	// 	// }
-	// 	// )
-	// }
-
-	// useEffect(() => {
-	// 	if (boxRefs.current.length === 1) {
-	// 		setFocusedBox(boxRefs.current[0])
-	// 	}
-	// }, [boxRefs.current])
-
-	// useEffect(() => {
-	// 	if (!wrapperEditable) {
-	// 		// this would break on deletion
-	// 		const focusedIndex = boxRefs.current.findIndex((element: any) => {
-	// 			return element?.id === focusedBox?.id.toString()
-	// 		})
-
-	// 		if (keyPressedRef.current === 'Enter' && focusedBox !== null && focusedIndex !== boxRefs.current.length - 1) {
-	// 			boxRefs.current[focusedIndex + 1].focus()
-	// 			setFocusedBox(boxRefs.current[focusedIndex + 1])
-	// 			setWrapperEditable(true)
-	// 		} else if (keyPressedRef.current === 'Backspace' && focusedBox !== null) {
-	// 			setFocusedBox(boxRefs.current[focusedIndex - 1])
-	// 			setWrapperEditable(true)
-	// 		} else {
-	// 			setFocusedBox(boxRefs.current[boxRefs.current.length - 1])
-	// 			setWrapperEditable(true)
-	// 		}
-	// 	}
-	// }, [wrapperEditable])
-
-	// function handleClickListen(e) {
-	// 	if (e.target.id.includes('fluid-wrapper')) {
-	// 		if (window.getSelection()?.type === 'Caret') {
-	// 			setWrapperEditable(false)
-	// 		}
-	// 	} else if (e.target.className.includes('editable-tag')) {
-	// 		// setFocusedBox(e.target)
-	// 	}
-	// }
-
-	// useEffect(() => {
-	// 	if (!focusedBox) return
-	// 	// set wrapper editable false to move focus to next box 
-	// 	setWrapperEditable(false)
-	// }, [boxes])
-
-	// const handleKeydown = useCallback((e: any) => {
-	// 	keyPressedRef.current = e.key
-	// 	switch (e.key) {
-	// 		case 'Enter':
-	// 			// e.preventDefault()
-	// 			e.stopPropagation()
-	// 			// addBox()
-	// 			break;
-	// 		case 'Backspace':
-	// 			e.stopPropagation()
-	// 			const getRange: any = window.getSelection()?.getRangeAt(0)
-	// 			// @ts-ignore
-	// 			let endContainerId = window.getSelection()?.getRangeAt(0).endContainer.parentNode.id
-	// 			// @ts-ignore
-	// 			let startContainerId = window.getSelection()?.getRangeAt(0).startContainer.parentNode.id
-
-	// 			// const focusedIndex = boxRefs.current.findIndex((element: any) => element?.id === focusedBox?.id.toString())
-	// 			// @ts-ignore
-	// 			const focusedIndex = getRange?.endContainer.parentNode.id
-	// 			// @ts-ignore
-	// 			const totalRemoved = getRange?.endContainer.parentNode.innerText.length >= 1 ?
-	// 				parseInt(endContainerId) - parseInt(startContainerId)
-	// 				: parseInt(endContainerId) - parseInt(startContainerId) + 1
-	// 			// @ts-ignore
-	// 			// @ts-ignore
-	// 			if (isNaN(totalRemoved)) {
-
-	// 			}
-	// 			else if (getRange?.endContainer.innerText.length === 0) {
-	// 				e.preventDefault()
-	// 			}
-	// 			break;
-	// 		case 'ArrowLeft':
-	// 			break;
-	// 		case 'ArrowRight':
-	// 			break;
-	// 		case 'ArrowUp':
-	// 			break;
-	// 		case 'ArrowDown':
-	// 			break;
-	// 	}
-
-	// }, [boxes, focusedBox])
-
 	useEffect(() => {
-		console.log('b', boxes)
-	}, [boxes])
+		if (!selectedNote) return
+		setTitleValue(selectedNote?.title)
+		updateNotesList(selectedNote)
+	}, [selectedNote])
 
 	function addBox(initialValue?: string) {
 		// get box location in array splice
@@ -159,7 +48,7 @@ export const EditPage: React.FC<Props> = () => {
 			caretPos: 0
 		}
 
-		const cloneBoxes: Boxes[] = [...boxes]
+		const cloneBoxes: Boxes[] = [...selectedNote.json]
 		cloneBoxes[focusedIndex].focused = false
 		cloneBoxes.splice(focusedIndex + 1, 0, newBox)
 
@@ -174,8 +63,8 @@ export const EditPage: React.FC<Props> = () => {
 		})
 
 		dispatch({
-			type: 'set_boxes',
-			payload: cloneBoxes
+			type: 'set_selected_note',
+			payload: { ...selectedNote, json: cloneBoxes }
 		})
 
 		dispatch({
@@ -185,7 +74,7 @@ export const EditPage: React.FC<Props> = () => {
 	}
 
 	function removeBox(appendText?: string) {
-		const cloneBoxes: Boxes[] = [...boxes]
+		const cloneBoxes: Boxes[] = [...selectedNote.json]
 		const prevIndex = cloneBoxes[focusedIndex - 1]
 		if (prevIndex.value !== undefined) {
 			prevIndex.caretPos = prevIndex.value.length
@@ -204,18 +93,18 @@ export const EditPage: React.FC<Props> = () => {
 			box.index = key
 		})
 		dispatch({
-			type: 'set_boxes',
-			payload: cloneBoxes
+			type: 'set_selected_note',
+			payload: { ...selectedNote, json: cloneBoxes }
 		})
 	}
 
 
 	function setBoxField(index: number, value: any, field: any, triggerWrapper?: boolean) {
-		const cloneBoxes: Boxes[] = [...boxes]
+		const cloneBoxes: Boxes[] = [...selectedNote?.json]
 		cloneBoxes[index][field] = value
 		dispatch({
-			type: 'set_boxes',
-			payload: cloneBoxes
+			type: 'set_selected_note',
+			payload: { ...selectedNote, json: cloneBoxes }
 		})
 
 		if (triggerWrapper) {
@@ -227,12 +116,12 @@ export const EditPage: React.FC<Props> = () => {
 	}
 
 	function handleBoxClick(e) {
-		let cloneBoxes = [...boxes]
+		let cloneBoxes = [...selectedNote?.json]
 		cloneBoxes = cloneBoxes.map(box => box.id == e.target.id ? { ...box, focused: true } : { ...box, focused: false })
 
 		dispatch({
-			type: 'set_boxes',
-			payload: cloneBoxes
+			type: 'set_selected_note',
+			payload: { ...selectedNote, json: cloneBoxes }
 		})
 	}
 
@@ -253,24 +142,18 @@ export const EditPage: React.FC<Props> = () => {
 
 
 	function handleWrapperKeys(e: any) {
-		console.log(e)
 		if (e.key === 'Backspace') {
 			e.preventDefault()
-			let cloneBoxes = [...boxes]
-			console.log(document.getSelection()?.getRangeAt(0))
+			let cloneBoxes = [...selectedNote?.json]
 			const range = document.getSelection()?.getRangeAt(0)
-			const caretStart = range?.startOffset
-			const caretEnd = range?.endOffset
 
 			const endContainer = range?.endContainer
 			const startContainer = range?.startContainer
-			const indexToDelete = []
 
 			let newBoxes: Boxes[] = []
 			if (startContainer !== undefined && endContainer !== undefined) {
 				cloneBoxes.map((item) => {
 					if (item.id > startContainer.parentElement.id && item.id < endContainer.parentElement.id) {
-						console.log('delete', item)
 					} else {
 						let startTextLength = startContainer.textContent.length
 						let endTextLength = startContainer.textContent.length
@@ -282,7 +165,6 @@ export const EditPage: React.FC<Props> = () => {
 
 			newBoxes = newBoxes.map((item, key) => {
 				if (key === newBoxes.length - 1) {
-					console.log(item)
 					item.lastAction = 'moved'
 					item.initialValue = item.value
 				}
@@ -292,8 +174,8 @@ export const EditPage: React.FC<Props> = () => {
 			})
 
 			dispatch({
-				type: 'set_boxes',
-				payload: newBoxes
+				type: 'set_selected_note',
+				payload: { ...selectedNote, json: cloneBoxes }
 			})
 
 
@@ -302,27 +184,48 @@ export const EditPage: React.FC<Props> = () => {
 			// if the box is the start or the end delete all the text that is selected, if it is all selected delete the box
 		}
 	}
+
+	function handleTitleUpdate(e) {
+		setTitleValue(e.target.value)
+
+		dispatch({
+			type: 'set_selected_note',
+			payload: { ...selectedNote, title: e.target.value }
+		})
+
+
+		// save
+		db.collection('notes').doc({ id: selectedNote.id }).update({
+			title: e.target.value
+		})
+
+		// update note list
+
+	}
+
 	return (
 		<>
 			<NoteSelector />
-			<div ref={wrapperRef} id="fluid-wrapper" className='flex flex-col w-4/5 max-w-[800px]' contentEditable={wrapperEditable} onKeyDown={(e) => {
-				if (!wrapperEditable) return
-				handleWrapperKeys(e)
-			}}
-				suppressContentEditableWarning>
-				{boxes.map((i, key) => (
-					<Box
-						key={key}
-						ref={(el) => (boxRefs.current[key] = el)}
-						id={key}
-						addBox={addBox}
-						onClick={(e) => handleBoxClick(e)}
-						removeBox={removeBox}
-						setBoxField={setBoxField}
-						box={i}
-					/>
-				))}
-				<div>{focusedIndex}</div>
+			<div className='flex flex-col items-center w-full h-full p-8 bg-zinc-50'>
+				<div ref={wrapperRef} id="fluid-wrapper" className='flex flex-col w-4/5 max-w-[800px] bg-zinc-50 rounded p-2' contentEditable={wrapperEditable} onKeyDown={(e) => {
+					if (!wrapperEditable) return
+					handleWrapperKeys(e)
+				}}
+					suppressContentEditableWarning>
+					<MetaItem label='Title' value={titleValue} onChange={handleTitleUpdate} />
+					{selectedNote?.json?.map((i, key) => (
+						<Box
+							key={key}
+							ref={(el) => (boxRefs.current[key] = el)}
+							id={key}
+							addBox={addBox}
+							onClick={(e) => handleBoxClick(e)}
+							removeBox={removeBox}
+							setBoxField={setBoxField}
+							box={i}
+						/>
+					))}
+				</div>
 			</div>
 		</>
 	)
