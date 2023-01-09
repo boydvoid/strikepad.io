@@ -198,9 +198,7 @@ export const EditPage: React.FC<Props> = () => {
 		db.collection('notes').doc({ id: selectedNote.id }).update({
 			title: e.target.value
 		})
-
 		// update note list
-
 	}
 
 	return (

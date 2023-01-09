@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Layer, Rect, Stage, Transformer } from 'react-konva'
+import useNotesApi from '../../api/notes'
+import { useDB } from '../../hooks/useDB'
 import { Toolbox } from '../../_components/Toolbox'
 import { EditPage } from '../Notes'
+import { useEditorContext } from '../Notes/context'
 
 interface Props { }
 
@@ -17,18 +20,37 @@ export const Tools = {
 }
 
 export const ProjectBoard: React.FC<Props> = () => {
+	const { state: { wrapperEditable, focusedIndex, selectedNote }, dispatch } = useEditorContext()
+	const { getNotesList } = useNotesApi()
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragElement, setDragElement] = useState(null)
 	const [shapes, setShapes] = useState<Shapes[]>([])
 	const [notepadOpen, setNotepadOpen] = useState(false)
+	const db = useDB()
 	const stageRef = useRef(null)
 
 	function gatherDragInfo(e: any) {
 		setDragElement(e.target.id)
 	}
 
+	useEffect(() => {
+		getNotesList()
+	}, [])
+
+	function loadNoteById(id: number) {
+		db.collection('notes').doc({ id: id }).get().then((note: Note) => {
+			dispatch({
+				type: 'set_selected_note',
+				payload: note
+			})
+		})
+	}
+
 	function handleClick() {
-		console.log('clikc')
+		if (!notepadOpen) {
+			loadNoteById(1)
+
+		}
 		// openNotepad
 		setNotepadOpen(!notepadOpen)
 
