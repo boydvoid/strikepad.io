@@ -6,10 +6,11 @@ import { useEditorContext } from '../../_pages/Notes/context'
 import { getCaretPosInBox } from './helpers'
 import './Box.css'
 import { ListBox } from './_components/List'
+import useNotesApi from '../../api/notes'
 
 interface Props {
 	box: Boxes
-	onClick: () => void
+	onClick: (e: any) => void
 	id: number
 	addBox: (initialValue?: string) => void
 	removeBox: (appendText?: string) => void
@@ -28,6 +29,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 	}, dispatch } = useEditorContext()
 
 	const db = useDB()
+	const { updateNote } = useNotesApi()
 	const [markdownTag, setMarkdownTag] = useState<string | null>(box.markdown)
 	const [language, setLanguage] = useState<any>('setup')
 
@@ -45,12 +47,17 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 	}, [box])
 
 	useEffect(() => {
+		if (lastAction === 'replaced') {
+			setMarkdownTag(box.markdown)
+			setBoxField(box.index, null, 'lastAction')
+		}
 		if (lastAction === 'moved') {
 			setMarkdownTag(box.markdown)
 			setBoxField(box.index, null, 'lastAction')
 			divRef.current.innerHTML = box.initialValue
 		}
 		if (box.focused) {
+			divRef.current.focus()
 			if (lastAction === 'backspace') {
 				setBoxField(box.index, null, 'lastAction')
 				divRef.current.innerHTML = box.initialValue
@@ -81,7 +88,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 			detectFormatting()
 
 			// @ts-ignore
-			divRef?.current?.focus()
+			// divRef?.current?.focus()
 			let range = document.createRange()
 			let sel = window.getSelection()
 
@@ -110,6 +117,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 			})
 
 		} else {
+			console.log('blur', box.index)
 			// @ts-ignore
 			divRef.current?.blur()
 			dispatch({
@@ -127,7 +135,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 		let caretPos = getCaretPosInBox()
 		setBoxField(box.index, caretPos + 1, 'caretPos')
 
-		if (markdownTag !== 'md-ul' && e.key === 'Enter') {
+		if (e.key === 'Enter') {
 			if (e.shiftKey) {
 
 			} else {
@@ -157,6 +165,16 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 					return
 				}
 			}
+
+			if (markdownTag !== 'md-p') {
+				console.log('bp', divRef.current.innerHTML)
+				if (divRef.current.innerText === '' || divRef.current.innerHTML === '<br>') {
+					setMarkdownTag('md-p')
+					setBoxField(box.index, 'md-p', 'markdown')
+				}
+			}
+
+
 			if (divRef.current.id === '0') {
 				return
 			}
@@ -226,11 +244,7 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 			e.preventDefault()
 		}
 
-		db.collection('notes').doc({ id: selectedNote.id }).update({
-			json: selectedNote.json
-		})
-
-
+		updateNote()
 	}
 
 	function positionCursor() {
@@ -270,34 +284,40 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 			setLanguage('javascript')
 		}
 
-		if (text.length <= 4) {
-			if (html.includes('#&nbsp;')) {
-				divRef.current.innerHTML = ''
-				setMarkdownTag('md-h1')
-			}
-			if (html.includes('##&nbsp;')) {
-				divRef.current.innerHTML = ''
-				setMarkdownTag('md-h2')
-			}
-			if (html.includes('###&nbsp;')) {
-				divRef.current.innerHTML = ''
-				setMarkdownTag('md-h3')
-			}
-
-			if (html.includes('```&nbsp;')) {
-				divRef.current.innerHTML = ''
-				setMarkdownTag('md-code')
-			}
-
-			if (html.includes('-&nbsp;')) {
-				divRef.current.innerHTML = ''
-				setMarkdownTag('md-ul')
-			}
+		let newHtml = ''
+		if (/^# /.test(html) || /^#&nbsp;/.test(html)) {
+			newHtml = html.replaceAll("# ", "")
+			newHtml = html.replaceAll("#&nbsp;", "")
+			setBoxField(box.index, newHtml, 'initialValue')
+			setMarkdownTag('md-h1')
+		}
+		if (/^## /.test(html)) {
+			newHtml = html.replaceAll("## ", "")
+			setBoxField(box.index, newHtml, 'initialValue')
+			setMarkdownTag('md-h2')
+		}
+		if (/^### /.test(html)) {
+			newHtml = html.replaceAll("### ", "")
+			setBoxField(box.index, newHtml, 'initialValue')
+			setMarkdownTag('md-h3')
 		}
 
+		if (/^``` /.test(html)) {
+			newHtml = html.replaceAll("``` ", "")
+			setBoxField(box.index, newHtml, 'initialValue')
+			setMarkdownTag('md-code')
+		}
+
+		if (/^- /.test(html)) {
+			newHtml = html.replaceAll("- ", "")
+			setBoxField(box.index, newHtml, 'initialValue')
+			setMarkdownTag('md-ul')
+		}
+		updateNote()
 	}
 
 	function getHTML() {
+		// console.log(markdownTag, box.index)
 
 		switch (markdownTag) {
 			case 'md-code':
@@ -332,11 +352,11 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 				)
 			case 'md-ul':
 				return (
-					<ListBox ref={divRef} box={box} id={id} onClick={onClick} handleKeys={handleKeys} setBoxField={setBoxField} />
+					<ListBox ref={divRef} box={box} id={id} handleKeys={handleKeys} setBoxField={setBoxField} />
 				)
-			default:
+			case 'md-p':
 				return (
-					<div
+					<p
 						ref={divRef}
 						onFocus={() => {
 							dispatch({
@@ -352,15 +372,42 @@ export const Box = forwardRef<HTMLDivElement, Props>(({ box, onClick, id, addBox
 						data-index={box.index}
 						id={id.toString()}
 						className={`editable-box w-full ${markdownTag} caret-black p-2`}
-						onClick={() => {
+						onClick={(e) => {
 							setBoxField(box.index, getCaretPosInBox(), 'caretPos')
-							onClick()
+							// onClick(e)
 						}}
 						onKeyDown={handleKeys}
 						data-placeholder="Enter Text Here..."
 						contentEditable
 						suppressContentEditableWarning >
-					</div>
+					</p>
+				)
+			default:
+				return (
+					<p
+						ref={divRef}
+						onFocus={() => {
+							dispatch({
+								type: 'set_focused_index',
+								payload: box.index
+							})
+							setBoxField(box?.index, true, 'focused')
+						}
+						}
+						onBlur={() => {
+							setBoxField(box?.index, false, 'focused')
+						}}
+						data-index={box.index}
+						id={id.toString()}
+						className={`editable-box w-full ${markdownTag} caret-black p-2`}
+						onClick={(e) => {
+							setBoxField(box.index, getCaretPosInBox(), 'caretPos')
+						}}
+						onKeyDown={handleKeys}
+						data-placeholder="Enter Text Here..."
+						contentEditable
+						suppressContentEditableWarning >
+					</p>
 				)
 
 		}

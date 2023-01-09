@@ -6,7 +6,7 @@ import { MetaItem } from '../../_components/Library/MetaItem'
 import { NoteSelector } from '../../_components/NoteSelector'
 import { useEditorContext } from './context'
 
-export type Action = 'enter' | 'backspace' | 'left' | 'right' | 'up' | 'down' | 'new' | 'moved' | null
+export type Action = 'enter' | 'backspace' | 'left' | 'right' | 'up' | 'down' | 'new' | 'moved' | 'replaced' | null
 export interface Boxes {
 	id: number
 	index: number
@@ -34,7 +34,7 @@ export const EditPage: React.FC<Props> = () => {
 		updateNotesList(selectedNote)
 	}, [selectedNote])
 
-	function addBox(initialValue?: string) {
+	function addBox(initialValue?: string, markdown = 'md-p') {
 		// get box location in array splice
 		const newIndex = focusedIndex + 1
 		const newBox: Boxes = {
@@ -42,7 +42,7 @@ export const EditPage: React.FC<Props> = () => {
 			index: newIndex,
 			value: '',
 			initialValue,
-			markdown: 'md-p',
+			markdown: markdown,
 			focused: true,
 			lastAction: 'new',
 			caretPos: 0
@@ -107,6 +107,7 @@ export const EditPage: React.FC<Props> = () => {
 			payload: { ...selectedNote, json: cloneBoxes }
 		})
 
+		console.log('cl', cloneBoxes)
 		if (triggerWrapper) {
 			dispatch({
 				type: 'set_wrapper_editable',
@@ -193,7 +194,6 @@ export const EditPage: React.FC<Props> = () => {
 			payload: { ...selectedNote, title: e.target.value }
 		})
 
-
 		// save
 		db.collection('notes').doc({ id: selectedNote.id }).update({
 			title: e.target.value
@@ -205,14 +205,12 @@ export const EditPage: React.FC<Props> = () => {
 
 	return (
 		<>
-			<NoteSelector />
 			<div className='flex flex-col items-center w-full h-full p-8 bg-zinc-50'>
 				<div ref={wrapperRef} id="fluid-wrapper" className='flex flex-col w-4/5 max-w-[800px] bg-zinc-50 rounded p-2' contentEditable={wrapperEditable} onKeyDown={(e) => {
 					if (!wrapperEditable) return
 					handleWrapperKeys(e)
 				}}
 					suppressContentEditableWarning>
-					<MetaItem label='Title' value={titleValue} onChange={handleTitleUpdate} />
 					{selectedNote?.json?.map((i, key) => (
 						<Box
 							key={key}
@@ -231,3 +229,7 @@ export const EditPage: React.FC<Props> = () => {
 	)
 }
 
+
+
+			//<NoteSelector />
+					//<MetaItem label='Title' value={titleValue} onChange={handleTitleUpdate} />
