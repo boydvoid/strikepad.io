@@ -23,10 +23,9 @@ export const editorInitialState = {
 	boxFocused: false,
 	selectedNote: { json: [] },
 	notes: []
-
 }
 
-type Action =
+export type Action =
 	| { type: 'set_wrapper_editable', payload: boolean }
 	| { type: 'set_focused_index', payload: number }
 	| { type: 'set_box_focused', payload: boolean }
@@ -45,13 +44,10 @@ function reducer(state: EditorState, action: Action) {
 			return { ...state, selectedNote: action.payload }
 		case 'set_notes':
 			return { ...state, notes: action.payload }
-
 	}
 }
 
-
 export const [EditorContext, EditorProvider] = createCtx(reducer, editorInitialState)
-
 
 export const useEditorContext = () => {
 	return useContext(EditorContext)

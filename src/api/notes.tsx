@@ -6,7 +6,7 @@ import { Note, useEditorContext } from '../_pages/Notes/context'
 
 const db = useDB()
 function useNotesApi() {
-	const { state: { notes }, dispatch } = useEditorContext()
+	const { state: { notes, selectedNote }, dispatch } = useEditorContext()
 
 	const getNotesList = () => {
 		db.collection('notes').orderBy('create_date').get().then((notes: Note[]) => {
@@ -36,7 +36,13 @@ function useNotesApi() {
 		})
 	}
 
-	return { getNotesList, updateNotesList }
+	const updateNote = () => {
+		db.collection('notes').doc({ id: selectedNote.id }).update({
+			json: selectedNote.json
+		})
+	}
+
+	return { getNotesList, updateNotesList, updateNote }
 
 }
 

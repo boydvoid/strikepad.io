@@ -72,7 +72,8 @@
         "height": 600,
         "resizable": true,
         "title": "strikepad",
-        "width": 800
+        "width": 800,
+				"fileDropEnabled": false
       }
     ]
   }
